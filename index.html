@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tavuk Vurma - Tam Sürüm</title>
+<style>
+  :root{
+    --bg:#eafce6;
+    --panel:#ffffff;
+    --accent:#2f8f2f;
+    --danger:#d94a4a;
+    --gold:#f5c542;
+    --muted:#6b6b6b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Inter,Segoe UI,Arial;
+    background:linear-gradient(180deg,var(--bg),#d7ffd0);
+    color:#111;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+    align-items:center;
+    gap:12px;
+    padding:16px;
+  }
+
+  header{
+    width:100%;
+    max-width:1100px;
+    display:flex;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  h1{font-size:20px;margin:0}
+  .top-right{
+    display:flex;gap:8px;align-items:center;
+  }
+  .panel{
+    background:var(--panel);
+    box-shadow:0 6px 18px rgba(0,0,0,0.08);
+    border-radius:12px;
+    padding:10px;
+  }
+
+  #controls{display:flex;gap:8px;align-items:center;}
+  select, button{padding:8px 10px;border-radius:8px;border:1px solid #ddd;background:white;cursor:pointer}
+  button.primary{background:var(--accent);color:white;border:none}
+  button.small{padding:6px 8px;font-size:13px}
+
+/* Kapsayıcı */
+#game-wrap {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin: 0 auto;
+}
+
+/* Sol panel */
+#left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Oyun alanı (Arka plan buraya uygulanacak) */
+#game-area {
+    position: relative;
+    height: 560px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 3px solid rgba(0, 0, 0, 0.06);
+
+    /* Arka plan */
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.02)),
+        url("https://i.pinimg.com/736x/a4/36/4d/a4364d5a56270578624b20c2986d7bc0.jpg")
+        center/cover no-repeat;
+
+    /* Arka planı hafif karartma */
+    filter: brightness(0.92);
+}
+  /* decorative ground */
+  #ground{
+    position:absolute;left:0;right:0;bottom:0;height:96px;
+    background:linear-gradient(180deg,#6fbf4c,#4da139);
+    box-shadow:inset 0 6px 20px rgba(0,0,0,0.12);
+  }
+
+  /* crosshair */
+  #crosshair{
+    position:absolute; width:44px;height:44px;
+    pointer-events:none;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    z-index:9999;
+  }
+  #crosshair .ring{
+    width:36px;height:36px;border-radius:50%;
+    border:2px solid rgba(0,0,0,0.5);
+    background:rgba(255,255,255,0.02);
+    box-shadow:0 2px 6px rgba(0,0,0,0.12);
+  }
+
+  /* chicken styles (div-based with emoji) */
+  .chicken{
+    position:absolute;
+    width:72px;height:72px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:34px;
+    user-select:none;
+    touch-action:none;
+    transform-origin:center;
+    transition:transform 120ms linear, opacity 200ms linear;
+    z-index:50;
+  }
+  .chicken.enter{ animation:popin .18s ease; }
+  @keyframes popin{ from{transform:scale(0)} to{transform:scale(1)} }
+
+  .chicken.normal{ background:rgba(255,255,255,0.6); border-radius:14px }
+  .chicken.gold{ background:linear-gradient(180deg,#fff6e0,#fff0b8); border-radius:14px; box-shadow:0 6px 10px rgba(245,197,66,0.18) }
+  .chicken.bomb{ background:linear-gradient(180deg,#ffdede,#ffbdbd); border-radius:14px }
+  .chicken.fast{ transform:scale(0.88); font-size:30px }
+  .chicken.armor{ box-shadow:inset 0 0 0 4px rgba(180,220,255,0.6) }
+
+  .chicken.hit{ transform:translateY(-24px) scale(0.8); opacity:0; transition:all 240ms ease-in }
+
+  /* HUD */
+  .hud{ display:flex;gap:8px;align-items:center; justify-content:space-between; padding:8px }
+  .stat{ min-width:110px; text-align:center; font-weight:600 }
+  .muted{ color:var(--muted); font-weight:500; font-size:13px }
+
+  /* right panel */
+  #right{width:320px; display:flex;flex-direction:column; gap:8px}
+  .box{padding:10px;border-radius:12px;background:var(--panel);}
+
+  /* buttons in shop/quest */
+  .list{display:flex;flex-direction:column;gap:8px}
+  .badge{display:inline-block;padding:6px 8px;border-radius:999px;background:#f0f0f0;font-size:13px}
+
+  /* fire effect */
+  #game-area.fire::after{
+    content:""; position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%); width:140%; height:140%;
+    background:rgba(255,240,200,0.05); pointer-events:none; border-radius:12px; z-index:9998;
+  }
+
+  /* small screens */
+  @media (max-width:880px){
+    #game-wrap{flex-direction:column}
+    #right{width:100%}
+    #game-area{height:420px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Tavuk Vurma - Gelişmiş Sürüm</h1>
+  <div class="top-right">
+    <div class="panel hud">
+      <div class="stat">Puan: <span id="score">0</span></div>
+      <div class="stat">Süre: <span id="timer">60</span>s</div>
+    </div>
+
+    <div class="panel" id="controls">
+      <label class="muted">Zorluk</label>
+      <select id="difficulty">
+        <option value="easy">Kolay</option>
+        <option value="normal" selected>Orta</option>
+        <option value="hard">Zor</option>
+      </select>
+      <button id="startBtn" class="primary">Başla</button>
+      <button id="modeBtn" class="small">Sonsuz Mod</button>
+    </div>
+  </div>
+</header>
+
+<section id="game-wrap">
+  <div id="left">
+    <div id="game-area" class="panel">
+      <div id="ground"></div>
+      <div id="crosshair"><div class="ring"></div></div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;max-width:1100px">
+      <div class="panel muted" style="flex:1">Quest: <span id="questText">İlk 20 tavuğu vur</span></div>
+      <div style="display:flex;gap:8px">
+        <button id="pow-time" class="small">+10s (Power)</button>
+        <button id="pow-freeze" class="small">Dondur (Power)</button>
+        <button id="pow-auto" class="small">Otomatik (Power)</button>
+      </div>
+    </div>
+  </div>
+
+  <aside id="right">
+    <div class="box">
+      <h3>Mağaza</h3>
+      <div class="list" id="shopList"></div>
+      <div style="margin-top:8px">
+        <small class="muted">Puan ile skin satın al (localStorage)</small>
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>Görevler</h3>
+      <div id="questList" class="list"></div>
+    </div>
+
+    <div class="box">
+      <h3>Liderlik</h3>
+      <div id="leaderboard"></div>
+      <div style="margin-top:8px">
+        <input id="playerName" placeholder="İsim (kayıt için)" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd" />
+        <button id="saveScore" style="margin-top:8px;width:100%" class="primary">Skoru Kaydet</button>
+      </div>
+    </div>
+
+  </aside>
+</section>
+
+<script>
+/* ----------------- Genel state ----------------- */
+let score = 0;
+let timeLeft = 60;
+let gameRunning = false;
+let infiniteMode = false;
+let baseSpawnRate = 1000;
+let spawnRate = baseSpawnRate;
+let spawnTimer = null;
+let timerInterval = null;
+let activeBuffs = { freeze: false, auto: false };
+let shopData = [
+  { id:'skin1', name:'Nişangah: Kırmızı', cost: 50, type:'crosshair'},
+  { id:'skin2', name:'Nişangah: Neon', cost: 120, type:'crosshair'},
+  { id:'skin3', name:'Zırh Skin', cost: 150, type:'skin'}
+];
+
+/* quests */
+let quests = [
+  { id:'q1', text:'İlk 20 tavuğu vur', target:20, progress:0, reward:20, done:false },
+  { id:'q2', text:'2 adet altın tavuk vur', target:2, progress:0, reward:15, done:false },
+  { id:'q3', text:'Hiç bomba vurma', target:1, progress:0, reward:30, done:false, restrictBombHit:true }
+];
+
+/* DOM */
+const gameArea = document.getElementById('game-area');
+const scoreEl = document.getElementById('score');
+const timerEl = document.getElementById('timer');
+const crosshair = document.getElementById('crosshair');
+const startBtn = document.getElementById('startBtn');
+const difficulty = document.getElementById('difficulty');
+const modeBtn = document.getElementById('modeBtn');
+const shopList = document.getElementById('shopList');
+const questList = document.getElementById('questList');
+const questText = document.getElementById('questText');
+const powTime = document.getElementById('pow-time');
+const powFreeze = document.getElementById('pow-freeze');
+const powAuto = document.getElementById('pow-auto');
+const leaderboard = document.getElementById('leaderboard');
+const saveScoreBtn = document.getElementById('saveScore');
+const playerNameInput = document.getElementById('playerName');
+
+/* localStorage helpers */
+function saveLeaderboard(list){ localStorage.setItem('tg_leader', JSON.stringify(list)); }
+function loadLeaderboard(){ return JSON.parse(localStorage.getItem('tg_leader')||'[]'); }
+function saveShop(){ localStorage.setItem('tg_shop', JSON.stringify(shopDataOwned)); }
+function loadShop(){ return JSON.parse(localStorage.getItem('tg_shop_owned')||'{}'); }
+
+/* player shop ownership */
+let shopDataOwned = loadShop();
+
+/* sounds via WebAudio */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function beep(freq=400, type='sine', time=0.08, vol=0.15){
+  if(!audioCtx) return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.value = vol;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); setTimeout(()=>{ o.stop(); }, time*1000);
+}
+function playPop(){ beep(700,'sine',0.06,0.12); }
+function playGold(){ beep(1200,'sawtooth',0.16,0.12); }
+function playBomb(){ beep(140,'sine',0.28,0.18); }
+function playPower(){ beep(1000,'triangle',0.12,0.11); }
+
+/* Utility */
+function rand(min,max){ return Math.random()*(max-min)+min; }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+/* ----------------- UI Başlangıç ----------------- */
+function renderShop(){
+  shopList.innerHTML = '';
+  shopData.forEach(it=>{
+    const el = document.createElement('div');
+    el.style.display='flex'; el.style.justifyContent='space-between'; el.style.alignItems='center';
+    el.innerHTML = `<div><strong>${it.name}</strong><div class="muted" style="font-size:12px">Fiyat: ${it.cost}</div></div>
+      <div><button data-id="${it.id}" ${shopDataOwned[it.id]?'disabled':''}>${shopDataOwned[it.id]?'Sahip':'Satın Al'}</button></div>`;
+    shopList.appendChild(el);
+    el.querySelector('button').addEventListener('click', ()=>{
+      if(score >= it.cost){
+        score -= it.cost; updateScore();
+        shopDataOwned[it.id] = true; saveShop();
+        renderShop();
+        // uygulama
+        if(it.type === 'crosshair'){
+          crosshair.querySelector('.ring').style.borderColor = it.id==='skin1' ? 'red' : 'deepskyblue';
+        }
+      } else {
+        alert('Yeterli puan yok');
+      }
+    });
+  });
+}
+
+/* quests render */
+function renderQuests(){
+  questList.innerHTML='';
+  quests.forEach(q=>{
+    const el = document.createElement('div');
+    el.style.display='flex';el.style.justifyContent='space-between';el.style.alignItems='center';
+    el.innerHTML = `<div>${q.text} <div class="muted" style="font-size:12px">${q.progress}/${q.target}</div></div>
+      <div>${q.done?'<span class="badge">Tamamlandı</span>':`Ödül: ${q.reward}`}</div>`;
+    questList.appendChild(el);
+  });
+  const next = quests.find(x=>!x.done);
+  questText.textContent = next ? next.text : 'Tüm görevler tamam!';
+}
+
+/* leaderboard */
+function renderLeaderboard(){
+  const arr = loadLeaderboard().slice(0,10);
+  leaderboard.innerHTML = arr.length ? arr.map(it=>`<div style="display:flex;justify-content:space-between"><div>${it.name}</div><div>${it.score}</div></div>`).join('') : '<div class="muted">Henüz kayıt yok</div>';
+}
+
+/* ----------------- Oyun Başlat / Bitiş ----------------- */
+function startGame(){
+  if(!audioCtx) return;
+  if(!gameRunning){
+    // resume audio context on user gesture
+    audioCtx.resume();
+  }
+  resetGame();
+  gameRunning = true;
+  startBtn.textContent = 'Duraklat';
+  difficulty.disabled = true;
+  modeBtn.disabled = true;
+  if(infiniteMode) {
+    timerEl.textContent = '∞';
+  } else {
+    timerEl.textContent = timeLeft;
+    timerInterval = setInterval(gameTick, 1000);
+  }
+  scheduleSpawn();
+}
+
+function pauseGame(){
+  gameRunning = false;
+  clearInterval(timerInterval);
+  clearTimeout(spawnTimer);
+  startBtn.textContent = 'Başla';
+  difficulty.disabled = false;
+  modeBtn.disabled = false;
+}
+
+startBtn.addEventListener('click', ()=>{
+  if(gameRunning) pauseGame(); else startGame();
+});
+
+modeBtn.addEventListener('click', ()=>{
+  infiniteMode = !infiniteMode;
+  modeBtn.textContent = infiniteMode ? 'Zamanlı Mod' : 'Sonsuz Mod';
+});
+
+/* reset */
+function resetGame(){
+  // temizle
+  clearTimeout(spawnTimer); clearInterval(timerInterval);
+  document.querySelectorAll('.chicken').forEach(e=>e.remove());
+  score = 0; updateScore();
+  timeLeft = 60;
+  spawnRate = baseSpawnRate = difficulty.value==='easy' ? 1200 : (difficulty.value==='hard' ? 700 : 1000);
+  activeBuffs = { freeze:false, auto:false };
+  renderQuests();
+}
+
+/* oyun tick */
+function gameTick(){
+  if(!gameRunning || infiniteMode) return;
+  timeLeft--;
+  timerEl.textContent = timeLeft;
+  // zorluk artışı
+  if(timeLeft <= 40) spawnRate = baseSpawnRate * 0.85;
+  if(timeLeft <= 25) spawnRate = baseSpawnRate * 0.68;
+  if(timeLeft <= 10) spawnRate = baseSpawnRate * 0.45;
+  if(timeLeft <= 0){
+    endGame();
+  }
+}
+
+/* endGame */
+function endGame(){
+  gameRunning = false;
+  clearInterval(timerInterval);
+  clearTimeout(spawnTimer);
+  document.querySelectorAll('.chicken').forEach(e=>e.remove());
+  startBtn.textContent = 'Başla';
+  difficulty.disabled = false;
+  modeBtn.disabled = false;
+  // göster
+  setTimeout(()=> alert('Oyun bitti! Skorunuz: ' + score), 80);
+}
+
+/* ----------------- spawn sistemi (dinamik, buff-aware) ----------------- */
+function scheduleSpawn(){
+  if(!gameRunning) return;
+  const effectiveSpawn = activeBuffs.freeze ? 9999999 : spawnRate;
+  spawnTimer = setTimeout(()=>{
+    createChicken();
+    // auto-fire bonus: eğer aktifse biraz daha sık
+    if(activeBuffs.auto){
+      scheduleSpawn(); // hızlı devam
+    } else {
+      scheduleSpawn();
+    }
+  }, effectiveSpawn * (Math.random()*0.6 + 0.7)); // rastgelelik
+}
+
+/* ----------------- tavuk oluşturma ----------------- */
+/* tavuk tipleri:
+  - normal (%60): 🐔 (1 hit)
+  - gold (%20): 🪙 (+5)
+  - bomb (%10): 💣 (eksi puan)
+  - fast (%8): 🐣 (küçük hızlı) (3 puan)
+  - armor (%? ): 🐔 zırhlı (2 hit)
+*/
+
+function createChicken(){
+  if(!gameRunning) return;
+  const el = document.createElement('div');
+  el.classList.add('chicken','enter');
+  // tür seçimi
+  const r = Math.random();
+  let type = 'normal', emoji='🐔', scoreVal=1, hitsRequired=1;
+  if(r < 0.60){ type='normal'; emoji='🐔'; scoreVal=1; hitsRequired=1; el.classList.add('normal'); }
+  else if(r < 0.80){ type='gold'; emoji='🪙'; scoreVal=5; hitsRequired=1; el.classList.add('gold'); }
+  else if(r < 0.90){ type='bomb'; emoji='💣'; scoreVal=-3; hitsRequired=1; el.classList.add('bomb'); }
+  else if(r < 0.96){ type='fast'; emoji='🐣'; scoreVal=3; hitsRequired=1; el.classList.add('fast'); }
+  else { type='armor'; emoji='🐔'; scoreVal=2; hitsRequired=2; el.classList.add('armor'); }
+
+  el.dataset.type = type;
+  el.dataset.hits = hitsRequired; // zırh için 2
+
+  el.innerHTML = `<div style="transform:translateY(-4px)">${emoji}</div>`;
+
+  // pozisyon
+  const padding = 96;
+  const x = rand(8, gameArea.clientWidth - padding);
+  const y = rand(8, gameArea.clientHeight - padding - 80); // üstten değil zemine yakın
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.width = '72px';
+  el.style.height = '72px';
+  el.style.opacity = '1';
+
+  // hareket animasyonu: hızlı tavuklar ufak hareket
+  if(type === 'fast'){
+    el.animate([{transform:'translateY(0)'},{transform:'translateY(-6px)'},{transform:'translateY(0)'}], {duration:600, iterations:Infinity});
+  }
+
+  // fare/dokunma ile vurma
+  el.addEventListener('pointerdown', (ev)=>{
+    ev.stopPropagation();
+    if(!gameRunning) return;
+    handleHit(el);
+  });
+
+  // otomatik kaçma: setTimeout ile kaybol
+  const life = infiniteMode ? rand(1200,2600) : rand(800, 1400);
+  const disappear = setTimeout(()=>{
+    if(el.parentElement) {
+      // kaçma anim
+      el.style.transition = 'transform 400ms linear, opacity 200ms';
+      el.style.transform = 'translateX(30px) translateY(-10px) scale(0.9)';
+      el.style.opacity = 0;
+      setTimeout(()=> el.remove(), 420);
+    }
+  }, activeBuffs.freeze ? 9999999 : life);
+
+  el.dataset._remove = disappear;
+
+  gameArea.appendChild(el);
+}
+
+/* ----------------- vurma işlemi ----------------- */
+function handleHit(el){
+  // auto-fire: hitti simule etmek
+  // hits required
+  let hitsLeft = parseInt(el.dataset.hits||1,10);
+  hitsLeft--;
+  if(hitsLeft > 0){
+    el.dataset.hits = hitsLeft;
+    // vurma efekti (şiddetli vuruş)
+    el.animate([{transform:'scale(1.05)'},{transform:'scale(0.96)'},{transform:'scale(1.02)'}], {duration:180});
+    playPop();
+    return;
+  }
+  // full hit
+  const type = el.dataset.type;
+  if(type === 'normal'){ score += 1; playPop(); updateQuests('normal'); }
+  else if(type === 'gold'){ score += 5; playGold(); updateQuests('gold'); }
+  else if(type === 'bomb'){ score += -3; playBomb(); updateQuests('bomb'); }
+  else if(type === 'fast'){ score += 3; playPop(); updateQuests('fast'); }
+  else if(type === 'armor'){ score += 2; playPop(); updateQuests('armor'); }
+
+  // vurulma anim
+  el.classList.add('hit');
+  setTimeout(()=>{ if(el.parentElement) el.remove(); }, 260);
+  updateScore();
+}
+
+/* ----------------- skor / quest update ----------------- */
+function updateScore(){
+  scoreEl.textContent = score;
+  // mağaza state
+  renderShop();
+}
+
+function updateQuests(typeHit){
+  // increment generic quest: q1 counts any hit
+  const q1 = quests.find(q=>q.id==='q1' && !q.done);
+  if(q1){ q1.progress++; if(q1.progress>=q1.target){ q1.done=true; score += q1.reward; alert('Görev tamam! Ödül: '+q1.reward); } }
+
+  if(typeHit==='gold'){
+    const q2 = quests.find(q=>q.id==='q2' && !q.done);
+    if(q2){ q2.progress++; if(q2.progress>=q2.target){ q2.done=true; score += q2.reward; alert('Görev tamam! Ödül: '+q2.reward); } }
+  }
+  if(typeHit==='bomb'){
+    const q3 = quests.find(q=>q.id==='q3' && !q.done);
+    // bomb olması durumunda q3 fail olabilir; bu quest "bomba vurma" ile fail olma mantığı yani
+    if(q3 && !q3.done){ q3.progress++; q3.done = true; /* fail */ }
+  }
+  updateScore(); renderQuests();
+}
+
+/* ----------------- power-up butonları ----------------- */
+powTime.addEventListener('click', ()=>{
+  if(score >= 10){ score -= 10; timeLeft += 10; updateScore(); playPower(); } else alert('10 puan gerekli');
+});
+powFreeze.addEventListener('click', ()=>{
+  if(score >= 25){
+    score -= 25; updateScore();
+    activateFreeze(3000);
+    playPower();
+  } else alert('25 puan gerekli');
+});
+powAuto.addEventListener('click', ()=>{
+  if(score >= 30){
+    score -= 30; updateScore();
+    activateAuto(3000);
+    playPower();
+  } else alert('30 puan gerekli');
+});
+
+function activateFreeze(duration){
+  activeBuffs.freeze = true;
+  setTimeout(()=>{ activeBuffs.freeze=false; }, duration);
+}
+function activateAuto(duration){
+  activeBuffs.auto = true;
+  // otomatik hedef: her 160ms en yakın tavuğu vur
+  const autoId = setInterval(()=>{
+    if(!gameRunning || !activeBuffs.auto) { clearInterval(autoId); return; }
+    const list = [...gameArea.querySelectorAll('.chicken')];
+    if(list.length===0) return;
+    // en üstteki (ilk) hedef al
+    const target = list[0];
+    handleHit(target);
+  }, 160);
+  setTimeout(()=>{ activeBuffs.auto = false; clearInterval(autoId); }, duration);
+}
+
+/* ----------------- Crosshair hareketi ve ateş efekti ----------------- */
+gameArea.addEventListener('pointermove', (e)=>{
+  const rect = gameArea.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  crosshair.style.left = Math.max(8,Math.min(gameArea.clientWidth-8,x)) + 'px';
+  crosshair.style.top = Math.max(8,Math.min(gameArea.clientHeight-8,y)) + 'px';
+});
+
+gameArea.addEventListener('pointerdown', ()=>{
+  gameArea.classList.add('fire');
+  gameArea.classList.add('fire-effect');
+  setTimeout(()=> gameArea.classList.remove('fire-effect'), 120);
+  // vurma; tıklanınca en üstteki tavuk hedef alınsın
+  if(!gameRunning) return;
+  // en yakın tavuk (basit: iterate ve çarpışma)
+  const cList = [...gameArea.querySelectorAll('.chicken')];
+  if(cList.length === 0) return;
+  // crosshair center
+  const cx = parseFloat(crosshair.style.left);
+  const cy = parseFloat(crosshair.style.top);
+  // bul en yakın mesafe
+  let best = null, bestd=999999;
+  cList.forEach(ch=>{
+    const cr = ch.getBoundingClientRect();
+    const gr = gameArea.getBoundingClientRect();
+    const x = cr.left - gr.left + cr.width/2;
+    const y = cr.top - gr.top + cr.height/2;
+    const d = Math.hypot(x-cx,y-cy);
+    if(d < bestd){ bestd=d; best=ch; }
+  });
+  // range limit
+  if(best && bestd < 120){
+    handleHit(best);
+  }
+});
+
+/* ----------------- kaydet / leaderboard ----------------- */
+saveScoreBtn.addEventListener('click', ()=>{
+  const name = (playerNameInput.value||'Anonim').trim();
+  const list = loadLeaderboard();
+  list.push({name, score});
+  list.sort((a,b)=>b.score-a.score);
+  saveLeaderboard(list);
+  renderLeaderboard();
+  alert('Skor kaydedildi!');
+});
+
+/* başlangıç render */
+renderShop();
+renderQuests();
+renderLeaderboard();
+
+/* Sayfa yüklenince focus için */
+window.addEventListener('resize', ()=>{ /* nothing */ });
+
+/* otomatik spawn tetiklemesi değiştirilmeli: scheduleSpawn çağırılınca spawnRate'e göre çalışıyor */
+function scheduleSpawn(){
+  clearTimeout(spawnTimer);
+  if(!gameRunning) return;
+  const jitter = rand(0.6,1.2);
+  const delay = (activeBuffs.freeze ? 9999999 : spawnRate) * jitter;
+  spawnTimer = setTimeout(()=>{
+    createChicken();
+    scheduleSpawn();
+  }, delay);
+}
+
+/* difficulty change */
+difficulty.addEventListener('change', ()=>{
+  if(difficulty.value==='easy'){ baseSpawnRate = 1200; timeLeft = 75; }
+  else if(difficulty.value==='normal'){ baseSpawnRate = 1000; timeLeft = 60; }
+  else { baseSpawnRate = 700; timeLeft = 45; }
+  spawnRate = baseSpawnRate;
+  timerEl.textContent = timeLeft;
+});
+
+/* başlangıç değerleri */
+difficulty.dispatchEvent(new Event('change'));
+
+/* otomatik spawn başlatma loop; startGame içinden scheduleSpawn çağrılıyor */
+
+/* localStorage shop load/save helpers */
+function saveShop(){ localStorage.setItem('tg_shop_owned', JSON.stringify(shopDataOwned)); }
+function loadShop(){ return JSON.parse(localStorage.getItem('tg_shop_owned')||'{}'); }
+shopDataOwned = loadShop();
+renderShop();
+
+</script>
+
+</body>
+</html>
