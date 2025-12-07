@@ -124,6 +124,20 @@
   .chicken.enter{ animation:popin .18s ease; }
   @keyframes popin{ from{transform:scale(0)} to{transform:scale(1)} }
 
+  /* Angry Birds tarzı fırlatma animasyonu */
+  @keyframes angryBirdsLeft{
+    0%{ transform:translateX(-100px) translateY(200px) rotate(-720deg) scale(0.6); opacity:0; }
+    10%{ opacity:1; }
+    100%{ transform:translateX(0) translateY(0) rotate(0deg) scale(1); }
+  }
+  @keyframes angryBirdsRight{
+    0%{ transform:translateX(calc(100vw + 100px)) translateY(200px) rotate(720deg) scale(0.6); opacity:0; }
+    10%{ opacity:1; }
+    100%{ transform:translateX(0) translateY(0) rotate(0deg) scale(1); }
+  }
+  .chicken.fly-left{ animation:angryBirdsLeft 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+  .chicken.fly-right{ animation:angryBirdsRight 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+
   .chicken.normal{ background:rgba(255,255,255,0.6); border-radius:14px }
   .chicken.gold{ background:linear-gradient(180deg,#fff6e0,#fff0b8); border-radius:14px; box-shadow:0 6px 10px rgba(245,197,66,0.18) }
   .chicken.bomb{ background:linear-gradient(180deg,#ffdede,#ffbdbd); border-radius:14px }
@@ -131,6 +145,77 @@
   .chicken.armor{ box-shadow:inset 0 0 0 4px rgba(180,220,255,0.6) }
 
   .chicken.hit{ transform:translateY(-24px) scale(0.8); opacity:0; transition:all 240ms ease-in }
+
+  /* Patlama efekti */
+  .explosion{
+    position:absolute;
+    width:80px;
+    height:80px;
+    pointer-events:none;
+    z-index:100;
+    animation:explode 0.4s ease-out forwards;
+  }
+  .explosion::before{
+    content:'💥';
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    font-size:40px;
+  }
+  @keyframes explode{
+    0%{ transform:scale(0) rotate(0deg); opacity:1; }
+    50%{ transform:scale(1.5) rotate(180deg); opacity:0.8; }
+    100%{ transform:scale(2) rotate(360deg); opacity:0; }
+  }
+
+  /* Kanat efekti */
+  .feather{
+    position:absolute;
+    width:20px;
+    height:20px;
+    pointer-events:none;
+    z-index:90;
+    animation:feather-fall 1s ease-out forwards;
+  }
+  .feather::before{
+    content:'🪶';
+    position:absolute;
+    font-size:16px;
+  }
+  @keyframes feather-fall{
+    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform:translateY(60px) rotate(720deg); opacity:0; }
+  }
+
+  /* Görev tamamlama kutusu */
+  .quest-complete-box{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%) scale(0);
+    background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color:white;
+    padding:30px 40px;
+    border-radius:20px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    z-index:10000;
+    text-align:center;
+    font-size:24px;
+    font-weight:bold;
+    animation:questBoxPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+  }
+  @keyframes questBoxPop{
+    0%{ transform:translate(-50%, -50%) scale(0) rotate(0deg); }
+    50%{ transform:translate(-50%, -50%) scale(1.2) rotate(5deg); }
+    100%{ transform:translate(-50%, -50%) scale(1) rotate(0deg); }
+  }
+  .quest-complete-box .reward{
+    font-size:32px;
+    color:#ffd700;
+    margin-top:10px;
+    text-shadow:2px 2px 4px rgba(0,0,0,0.3);
+  }
 
   /* HUD */
   .hud{ display:flex;gap:8px;align-items:center; justify-content:space-between; padding:8px }
@@ -227,6 +312,8 @@
 </section>
 
 <script>
+// Tüm alert'leri devre dışı bırak - oyunu takılmasın ve durmasın
+window.alert = () => {};
 /* ----------------- Genel state ----------------- */
 let score = 0;
 let timeLeft = 60;
@@ -292,6 +379,7 @@ function playPop(){ beep(700,'sine',0.06,0.12); }
 function playGold(){ beep(1200,'sawtooth',0.16,0.12); }
 function playBomb(){ beep(140,'sine',0.28,0.18); }
 function playPower(){ beep(1000,'triangle',0.12,0.11); }
+
 
 /* Utility */
 function rand(min,max){ return Math.random()*(max-min)+min; }
@@ -388,7 +476,7 @@ function resetGame(){
   document.querySelectorAll('.chicken').forEach(e=>e.remove());
   score = 0; updateScore();
   timeLeft = 60;
-  spawnRate = baseSpawnRate = difficulty.value==='easy' ? 1200 : (difficulty.value==='hard' ? 700 : 1000);
+  spawnRate = baseSpawnRate = difficulty.value==='easy' ? 2000 : (difficulty.value==='hard' ? 1200 : 1600);
   activeBuffs = { freeze:false, auto:false };
   renderQuests();
 }
@@ -417,7 +505,22 @@ function endGame(){
   difficulty.disabled = false;
   modeBtn.disabled = false;
   // göster
-  setTimeout(()=> alert('Oyun bitti! Skorunuz: ' + score), 80);
+  showGameOverBox();
+}
+
+function showGameOverBox(){
+  const box = document.createElement('div');
+  box.className = 'quest-complete-box';
+  box.innerHTML = `
+    <div>Oyun Bitti!</div>
+    <div class="reward">Skor: ${score}</div>
+  `;
+  document.body.appendChild(box);
+  
+  // 3 saniye sonra kaldır
+  setTimeout(()=>{
+    if(box.parentElement) box.remove();
+  }, 3000);
 }
 
 /* ----------------- spawn sistemi (dinamik, buff-aware) ----------------- */
@@ -462,15 +565,80 @@ function createChicken(){
 
   el.innerHTML = `<div style="transform:translateY(-4px)">${emoji}</div>`;
 
-  // pozisyon
-  const padding = 96;
-  const x = rand(8, gameArea.clientWidth - padding);
-  const y = rand(8, gameArea.clientHeight - padding - 80); // üstten değil zemine yakın
-  el.style.left = x + 'px';
-  el.style.top = y + 'px';
+  // Angry Birds tarzı fırlatma
+  const fromLeft = Math.random() < 0.5;
+  const targetY = rand(96, gameArea.clientHeight - 120);
+  const targetX = rand(100, gameArea.clientWidth - 100);
+  
+  // başlangıç pozisyonu (ekran dışından)
+  if(fromLeft){
+    el.style.left = '-100px';
+    el.style.top = '200px';
+    el.classList.add('fly-left');
+  } else {
+    el.style.left = (gameArea.clientWidth + 100) + 'px';
+    el.style.top = '200px';
+    el.classList.add('fly-right');
+  }
+  
   el.style.width = '72px';
   el.style.height = '72px';
   el.style.opacity = '1';
+  
+  // Angry Birds parabol hareketi
+  setTimeout(() => {
+    const speed = type === 'fast' ? 0.6 : 1; // hızlı tavuklar daha hızlı
+    const duration = 3000 * speed;
+    
+    el.animate([
+      { 
+        left: fromLeft ? '-100px' : (gameArea.clientWidth + 100) + 'px',
+        top: '200px',
+        transform: 'rotate(0deg) scale(1)'
+      },
+      { 
+        left: targetX + 'px',
+        top: targetY + 'px',
+        transform: 'rotate(360deg) scale(1.1)',
+        offset: 0.3
+      },
+      { 
+        left: targetX + 'px',
+        top: targetY + 'px',
+        transform: 'rotate(360deg) scale(1)',
+        offset: 0.4
+      }
+    ], {
+      duration: duration,
+      iterations: 1,
+      easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+      fill: 'forwards'
+    });
+    
+    // fırlatmadan sonra ekranda kalma ve yavaşça düşme
+    setTimeout(() => {
+      if(el.parentElement && gameRunning){
+        el.animate([
+          { 
+            top: targetY + 'px',
+            transform: 'rotate(360deg) scale(1)'
+          },
+          { 
+            top: (gameArea.clientHeight - 100) + 'px',
+            transform: 'rotate(720deg) scale(0.9)',
+            opacity: 0.3
+          }
+        ], {
+          duration: 4000,
+          iterations: 1,
+          easing: 'ease-in',
+          fill: 'forwards'
+        }).onfinish = () => {
+          if(el.parentElement) el.remove();
+        };
+      }
+    }, duration);
+  }, 100);
 
   // hareket animasyonu: hızlı tavuklar ufak hareket
   if(type === 'fast'){
@@ -501,6 +669,35 @@ function createChicken(){
   gameArea.appendChild(el);
 }
 
+/* ----------------- vurma efektleri ----------------- */
+function createExplosion(x, y){
+  const explosion = document.createElement('div');
+  explosion.className = 'explosion';
+  explosion.style.left = (x - 40) + 'px';
+  explosion.style.top = (y - 40) + 'px';
+  gameArea.appendChild(explosion);
+  
+  setTimeout(() => {
+    if(explosion.parentElement) explosion.remove();
+  }, 400);
+}
+
+function createFeathers(x, y, count = 3){
+  for(let i = 0; i < count; i++){
+    setTimeout(() => {
+      const feather = document.createElement('div');
+      feather.className = 'feather';
+      feather.style.left = (x + Math.random() * 40 - 20) + 'px';
+      feather.style.top = (y + Math.random() * 40 - 20) + 'px';
+      gameArea.appendChild(feather);
+      
+      setTimeout(() => {
+        if(feather.parentElement) feather.remove();
+      }, 1000);
+    }, i * 50);
+  }
+}
+
 /* ----------------- vurma işlemi ----------------- */
 function handleHit(el){
   // auto-fire: hitti simule etmek
@@ -523,6 +720,15 @@ function handleHit(el){
   else if(type === 'armor'){ score += 2; playPop(); updateQuests('armor'); }
 
   // vurulma anim
+  const rect = el.getBoundingClientRect();
+  const gameRect = gameArea.getBoundingClientRect();
+  const x = rect.left - gameRect.left + rect.width / 2;
+  const y = rect.top - gameRect.top + rect.height / 2;
+  
+  // Efektleri oluştur
+  createExplosion(x, y);
+  createFeathers(x, y, 3);
+  
   el.classList.add('hit');
   setTimeout(()=>{ if(el.parentElement) el.remove(); }, 260);
   updateScore();
